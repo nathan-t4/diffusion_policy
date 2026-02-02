@@ -1,9 +1,9 @@
 import gymnasium as gym
 import gym_pusht
 
-# render modes "human" 
+from diffusion_policy.envs import PushTImageEnv
 
-env = gym.make("gym_pusht/PushT-v0", render_mode="human")
+env = PushTImageEnv()
 obs, info = env.reset()
 
 for _ in range(1000):
