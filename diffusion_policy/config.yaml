@@ -9,8 +9,8 @@ checkpoint:
     monitor_key: test_mean_score
 dataloader:
   batch_size: 64
-  num_workers: 8
-  persistent_workers: false
+  num_workers: 4
+  persistent_workers: true
   pin_memory: true
   shuffle: true
 dataset_obs_steps: 2
@@ -120,14 +120,14 @@ task:
     pad_before: 1
     seed: 42
     val_ratio: 0.02
-    zarr_path: data/pusht/pusht_cchi_v7_replay.zarr
+    zarr_path: data/pusht_cchi_v2.zarr
   env_runner:
     _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner
     fps: 10
     legacy_test: true
     max_steps: 300
     n_action_steps: 8
-    n_envs: null
+    n_envs: 10
     n_obs_steps: 2
     n_test: 50
     n_test_vis: 4

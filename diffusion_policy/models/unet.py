@@ -4,6 +4,8 @@ import math
 import torch
 import torch.nn as nn
 
+from typing import Union
+
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -186,9 +188,9 @@ class ConditionalUnet1D(nn.Module):
         self.down_modules = down_modules
         self.final_conv = final_conv
 
-        print("number of parameters: {:e}".format(
-            sum(p.numel() for p in self.parameters()))
-        )
+        # print("number of parameters: {:e}".format(
+        #     sum(p.numel() for p in self.parameters()))
+        # )
 
     def forward(self,
             sample: torch.Tensor,
