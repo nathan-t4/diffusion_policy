@@ -14,9 +14,9 @@ from datetime import datetime
 import wandb
 from skvideo.io import vwrite
 import re
-import glob
-import os
+import json
 import yaml
+from typing import Literal
 
 from diffusion_policy.envs import PushTImageEnv
 from diffusion_policy.dataset import PushTImageDataset, PushTStateDataset, normalize_data, unnormalize_data
@@ -45,7 +45,7 @@ class Trainer:
 
         # training parameters
         self.num_epochs = 100
-        self.eval_every_epochs = 25
+        self.eval_every_epochs = 101 # disabled
         self.eval_n_episodes = cfg.task.env_runner.n_envs
         self.max_eval_steps = cfg.task.env_runner.max_steps
         # state-space parameters
@@ -254,8 +254,9 @@ class Trainer:
             num_training_steps=len(self.dataloader) * self.num_epochs
         )
     
-    def create_eval_env(self):
-        self.eval_env = PushTImageEnv()
+    def create_eval_env(self, render_mode: Literal["human", "rgb_array"] = "human"):
+        # rgb_array will disable rendering during training! currently "human"
+        self.eval_env = PushTImageEnv(render_mode=render_mode)
 
     def run_training(self):
         # Determine starting epoch
@@ -367,12 +368,13 @@ class Trainer:
 
         return self.ema
 
-    def batch_evaluate(self, ema_nets: nn.Module | None = None, checkpoint_path: str | None = None, tag: str | None = None, seed: int | None = None):
+    def batch_evaluate(self, ema_nets: nn.Module | None = None, checkpoint_path: str | None = None, tag: str | None = None, n_envs: int | None = None, save_results: bool = False):
         rewards = []
         successes = 0
+        n_envs = self.eval_n_episodes if n_envs is None else n_envs
         eval_seed = self.cfg.task.env_runner.test_start_seed
-        for i in range(self.eval_n_episodes):
-            result = self.evaluate(ema_nets, checkpoint_path, tag, seed=eval_seed + i, save = i == self.eval_n_episodes - 1)
+        for i in range(n_envs):
+            result = self.evaluate(ema_nets, checkpoint_path, tag, seed=eval_seed + i, save = True)
             # evaluate returns a dict with 'task_success' and 'reward'
             success = result.get('task_success')
             reward = result.get('reward')
@@ -381,11 +383,20 @@ class Trainer:
         
         rewards = np.array(rewards)
         
-        return {
-            "task_success_rate": successes / self.eval_n_episodes,
+        result = {
+            "task_success_rate": successes / n_envs,
             "mean_reward": np.mean(rewards),
-            "raw_rewards": rewards,
+            "raw_rewards": list(rewards),
         }
+
+        if save_results:
+            result_path = pathlib.Path(self.output_dir).joinpath("evaluation_results.json")
+            result_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(result_path, 'w') as f:
+                json.dump(result, f, indent=2)
+            return result
+        
+        return result
     
     def evaluate(self, ema_nets: nn.Module | None = None, checkpoint_path: str | None = None, tag: str | None = None, seed: int | None = None, save: bool = False):
         # eval parameters
@@ -504,7 +515,8 @@ class Trainer:
                         break
         
         if save:
-            movie_filename = f"evaluation_{tag}.mp4" if tag else "evaluation.mp4"
+            # unnormalize images to [0, 255]
+            movie_filename = f"evaluation_{tag}_{seed}.mp4" if tag else f"evaluation_{seed}.mp4"
             movie_path = pathlib.Path(self.output_dir).joinpath("rollouts", movie_filename)
             movie_path.parent.mkdir(parents=True, exist_ok=True)
             # Convert list of (3, 96, 96) arrays to (N, 96, 96, 3) and uint8
@@ -520,9 +532,45 @@ class Trainer:
         }
 
 if __name__ == '__main__':
-    cfg = OmegaConf.load("diffusion_policy/config.yaml")
-    OmegaConf.resolve(cfg)
+    # Overnight training run using v1 and v2 data
+    # cfg = OmegaConf.load("diffusion_policy/configs/config_v1.yaml")
+    # OmegaConf.resolve(cfg)
+    # trainer = Trainer(cfg)
+    # trainer.run_training()
 
-    existing_model_path = None
-    trainer = Trainer(cfg, existing_model_path=existing_model_path)
-    trainer.run_training()
+    # cfg = OmegaConf.load("diffusion_policy/configs/config_v2.yaml")
+    # OmegaConf.resolve(cfg)
+    # trainer = Trainer(cfg)
+    # trainer.run_training()
+
+    # Example batch evaluation
+    # cfg = OmegaConf.load("diffusion_policy/configs/config_v1.yaml")
+    # OmegaConf.resolve(cfg)
+    # trainer = Trainer(cfg)
+    # results = trainer.batch_evaluate(checkpoint_path="runs/20260202_213008/checkpoints/checkpoint_final.pt", n_envs=50, tag="v1_100ep", save_results=True)
+    # print(results)
+
+    # cfg = OmegaConf.load("diffusion_policy/configs/config_v2.yaml")
+    # OmegaConf.resolve(cfg)
+    # trainer = Trainer(cfg)
+    # results = trainer.batch_evaluate(checkpoint_path="runs/20260202_223257/checkpoints/checkpoint_final.pt", n_envs=50, tag="v2_100ep", save_results=True)
+    # print(results)
+
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--config", type=str, choices=["v1", "v2"], required=True)
+    parser.add_argument("--checkpoint_path", type=str)
+    parser.add_argument("--n_envs", type=int, default=50)
+    parser.add_argument("--tag", type=str)
+    args = parser.parse_args()
+
+    cfg = OmegaConf.load("diffusion_policy/configs/config_" + args.config + ".yaml")
+    OmegaConf.resolve(cfg)
+    trainer = Trainer(cfg)
+    if args.eval:
+        results = trainer.batch_evaluate(checkpoint_path=args.checkpoint_path, n_envs=args.n_envs, tag=args.tag, save_results=True)
+        print(results)
+    else:
+        trainer.run_training()

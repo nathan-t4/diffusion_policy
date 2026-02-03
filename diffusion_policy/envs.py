@@ -38,4 +38,4 @@ def PushTImageEnv(render_mode: Literal["human", "rgb_array"] = "human"):
 
 def PushTStateEnv(render_mode: Literal["human", "rgb_array"] = "human"):
     env = gym.make("gym_pusht/PushT-v0", obs_type="state", render_mode=render_mode)
-    return PushTEnvWrapper(env)
+    return env
