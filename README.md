@@ -1,7 +1,5 @@
 # Diffusion Policy for PushT Environment
 
-Task Environment: pushT — https://github.com/huggingface/gym-pusht
-
 # Install
 Setup environment with `uv sync`
 
@@ -35,19 +33,12 @@ python3 diffusion_policy/train.py --config=v1
 ## Example: success with v2 policy (trained with 2x data) while failure with v1 policy
 
 ### v1
-<video width="320" height="320" controls>
-  <source src="evaluation_v1_100ep_100001.mp4" type="video/mp4">
-</video>
+![evaluation_v1_100ep_100001](https://github.com/user-attachments/assets/49ee79f9-de81-4121-97b6-2a1e740eb9ea)
 
 ### v2
-<video width="320" height="320" controls>
-  <source src="evaluation_v2_100ep_100001.mp4" type="video/mp4">
-</video>
+![evaluation_v2_100ep_100001](https://github.com/user-attachments/assets/af9b650c-29a7-4642-a55c-21527fa10269)
 
 ## Training Runs Info
-- runs/20260202_213008 (v1, 100 epochs)
-- runs/20260202_223257 (v2, 100 epochs)
-
 Wandb training report: [[Link](https://api.wandb.ai/links/nathan-t4-n-a/jytx7c9j)]
 
 # Credits
